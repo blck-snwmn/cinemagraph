@@ -1,0 +1,71 @@
+"""Render the night study cinemagraph to a looping video.
+
+    python -m cinemagraph.render
+"""
+
+import argparse
+import subprocess
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+from cinemagraph.effects.steam import Steam, SteamConfig
+
+ROOT = Path(__file__).resolve().parents[2]
+SOURCE = ROOT / "assets/source/night_study.png"
+
+
+def build_effects(period: float) -> list:
+    return [Steam(SteamConfig(source_x=890, source_y=792), period)]
+
+
+def render(out: Path, period: float, fps: int, preview: Path | None) -> None:
+    base = np.asarray(Image.open(SOURCE).convert("RGB"), dtype=np.float32) / 255
+    height, width = base.shape[:2]
+    effects = build_effects(period)
+    n_frames = int(round(period * fps))
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        "ffmpeg", "-y", "-loglevel", "error",
+        "-f", "rawvideo", "-pix_fmt", "rgb24",
+        "-s", f"{width}x{height}", "-r", str(fps), "-i", "-",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "16",
+        "-movflags", "+faststart",
+        str(out),
+    ]  # fmt: skip
+    with subprocess.Popen(cmd, stdin=subprocess.PIPE) as proc:
+        for i in range(n_frames):
+            frame = base.copy()
+            for effect in effects:
+                effect.apply(frame, i / fps)
+            proc.stdin.write((np.clip(frame, 0, 1) * 255 + 0.5).astype(np.uint8).tobytes())
+        proc.stdin.close()
+    if proc.returncode:
+        raise SystemExit(f"ffmpeg failed with code {proc.returncode}")
+
+    if preview:
+        # A small looping WebP that is easy to view anywhere.
+        subprocess.run(
+            [
+                "ffmpeg", "-y", "-loglevel", "error", "-i", str(out),
+                "-vf", "scale=724:-2", "-loop", "0", "-quality", "80",
+                str(preview),
+            ],  # fmt: skip
+            check=True,
+        )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--out", type=Path, default=ROOT / "output/night_study.mp4")
+    parser.add_argument("--preview", type=Path, default=ROOT / "output/night_study.webp")
+    parser.add_argument("--period", type=float, default=6.0, help="loop length in seconds")
+    parser.add_argument("--fps", type=int, default=24)
+    args = parser.parse_args()
+    render(args.out, args.period, args.fps, args.preview)
+
+
+if __name__ == "__main__":
+    main()
