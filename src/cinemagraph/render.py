@@ -31,7 +31,10 @@ def render(out: Path, period: float, fps: int, preview: Path | None) -> None:
         "ffmpeg", "-y", "-loglevel", "error",
         "-f", "rawvideo", "-pix_fmt", "rgb24",
         "-s", f"{width}x{height}", "-r", str(fps), "-i", "-",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "16",
+        # Near-lossless constant QP: at normal quality the first (I) frame
+        # carries different grain from the last (P) frame, which shows as a
+        # flicker at the loop seam. Static pixels keep the file small anyway.
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-qp", "4",
         "-movflags", "+faststart",
         str(out),
     ]  # fmt: skip

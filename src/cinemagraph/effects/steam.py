@@ -25,8 +25,9 @@ class SteamConfig:
     top_width: float = 16.0  # wisp thickness at the top
     wisps: int = 4
     lean: float = 10.0  # overall horizontal drift at the top, in pixels
-    strength: float = 2.2  # peak opacity
-    color: tuple[float, float, float] = (1.0, 0.95, 0.88)  # RGB, 0..1
+    strength: float = 3.0  # peak opacity
+    # Slightly cool white so the steam separates from the warm room light.
+    color: tuple[float, float, float] = (0.94, 0.97, 1.0)  # RGB, 0..1
     seed: int = 7
 
 
@@ -65,9 +66,10 @@ class Steam:
                 phase=rng.uniform(0, 2 * np.pi),
                 reach=rng.uniform(0.45, 1.0),
                 pulse=int(rng.integers(1, 3)),
-                pulse_phase=rng.uniform(0, 2 * np.pi),
+                # Stagger the pulses so the wisps never all thin out at once.
+                pulse_phase=2 * np.pi * i / cfg.wisps + rng.uniform(-0.3, 0.3),
             )
-            for slot in slots
+            for i, slot in enumerate(slots)
         ]
 
     def alpha(self, t: float) -> np.ndarray:
@@ -97,10 +99,12 @@ class Steam:
             )
             fade = np.clip(1 - u / wisp.reach, 0, 1) ** 1.4
             # Integer pulse count keeps this periodic in the loop length.
-            swell = 0.55 + 0.45 * np.sin(wisp.pulse * phase + wisp.pulse_phase)
+            swell = 0.8 + 0.2 * np.sin(wisp.pulse * phase + wisp.pulse_phase)
             density += swell * fade * np.exp(-((self.xs - center) ** 2) / (2 * width**2))
 
-        a = density * breakup**2.2 * formed
+        # Densest just above the rim, thinning out as it rises.
+        body = 1.3 - 0.8 * np.clip(u / 0.6, 0, 1)
+        a = density * (0.15 + breakup**2.2) * formed * body
         a = np.clip(a * cfg.strength, 0, 1)
         return cv2.GaussianBlur(a.astype(np.float32), (0, 0), 2.0)
 
