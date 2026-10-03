@@ -10,20 +10,24 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+from cinemagraph.effects.city_lights import CityLights, CityLightsConfig
 from cinemagraph.effects.steam import Steam, SteamConfig
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "assets/source/night_study.png"
 
 
-def build_effects(period: float) -> list:
-    return [Steam(SteamConfig(source_x=890, source_y=792), period)]
+def build_effects(base: np.ndarray, period: float) -> list:
+    return [
+        CityLights(CityLightsConfig(), base, period),
+        Steam(SteamConfig(source_x=890, source_y=792), period),
+    ]
 
 
 def render(out: Path, period: float, fps: int, preview: Path | None) -> None:
     base = np.asarray(Image.open(SOURCE).convert("RGB"), dtype=np.float32) / 255
     height, width = base.shape[:2]
-    effects = build_effects(period)
+    effects = build_effects(base, period)
     n_frames = int(round(period * fps))
 
     out.parent.mkdir(parents=True, exist_ok=True)
