@@ -4,8 +4,9 @@ The sky is split into a soft layer (clouds) and a detail layer (stars, paint
 grain). Only the soft layer moves, so the stars stay put. Over a loop of a few
 seconds real clouds barely travel, so instead of translating them (which can
 only loop by cross-fading, and that reads as blurring in place) the soft layer
-is warped by a slow wave that travels to the right. Bands of cloud swell and
-settle as it passes, and the warp is periodic in the loop length.
+is warped by a slow wave that travels to the right, and broad patches of light
+and shade scroll right across it. Bands of cloud swell and brighten as they
+pass. Both are periodic in the loop length.
 """
 
 from dataclasses import dataclass, field
@@ -22,8 +23,11 @@ class CloudsConfig:
     panes: list[tuple[int, int, int]] = field(
         default_factory=lambda: [(664, 808, 178), (860, 1024, 195)]
     )
-    sway_x: float = 8.0  # horizontal warp amplitude, in pixels
-    sway_y: float = 3.0  # vertical warp amplitude, in pixels
+    sway_x: float = 16.0  # horizontal warp amplitude, in pixels
+    sway_y: float = 7.0  # vertical warp amplitude, in pixels
+    # Patches of light and shade that drift right by one tile per loop.
+    shade_tile: int = 120  # pixels, so they travel tile / loop length
+    shade_depth: float = 0.3  # brightness swing, as a fraction
     wavelength: float = 260.0  # pixels; the wave crosses one of these per loop
     edge_fade: float = 22.0  # motion fades out this close to buildings/frame
 
@@ -52,6 +56,9 @@ class Clouds:
         self.gy, self.gx = np.mgrid[0:h, 0:w].astype(np.float32)
         # Uneven phase so the wave front is not a straight vertical line.
         self.jitter = (2.0 * periodic_noise(h, w, scale=40, seed=5)).astype(np.float32)
+        # Broad, flat patches; periodic across the tile so the scroll wraps.
+        tile = periodic_noise(h, cfg.shade_tile, scale=30, seed=11, stretch=0.5)
+        self.shade = (tile - tile.mean()).astype(np.float32)
 
     def _sky_mask(self, patch: np.ndarray) -> np.ndarray:
         rgb = patch * 255
@@ -81,5 +88,9 @@ class Clouds:
             self.soft, map_x.astype(np.float32), map_y.astype(np.float32), cv2.INTER_LINEAR,
             borderMode=cv2.BORDER_REFLECT,
         )
+        tile = self.cfg.shade_tile
+        offset = int(round(tile * t / self.period))
+        cols = (np.arange(moved.shape[1]) - offset) % tile
+        moved = moved * (1 + self.cfg.shade_depth * self.shade[:, cols, None])
         region = frame[self.y0 : self.y1, self.x0 : self.x1]
         region[:] = region + self.weight * (moved + self.detail - region)
