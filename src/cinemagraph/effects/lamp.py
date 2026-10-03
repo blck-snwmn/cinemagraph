@@ -18,8 +18,8 @@ class LampConfig:
     reach_x: float = 420.0  # falloff radius across the desk
     reach_y: float = 330.0
     halo_radius: float = 55.0
-    depth: float = 0.05  # brightness swing of the lit desk, as a fraction
-    halo_depth: float = 0.10  # brightness swing of the bulb's halo
+    depth: float = 0.025  # brightness swing of the lit desk, as a fraction
+    halo_depth: float = 0.05  # brightness swing of the bulb's halo
 
 
 class Lamp:
@@ -46,9 +46,12 @@ class Lamp:
         self.gain = gain[..., None].astype(np.float32)
 
     def level(self, t: float) -> float:
-        """Brightness offset in about [-1, 1]: a slow swell with faint tremor."""
-        p = 2 * np.pi * t / self.period
-        return float(0.65 * np.sin(p + 0.4) + 0.25 * np.sin(3 * p + 1.9) + 0.1 * np.sin(11 * p + 0.7))
+        """Brightness offset in [-1, 1]: one even bright-dark-bright breath.
+
+        Faster terms read as a flame or a failing bulb, and an uneven mix of
+        slow terms reads as the lamp dimming and struggling to recover.
+        """
+        return float(np.cos(2 * np.pi * t / self.period))
 
     def apply(self, frame: np.ndarray, t: float) -> None:
         m = self.level(t)
