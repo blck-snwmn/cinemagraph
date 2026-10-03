@@ -6,8 +6,8 @@ regions are animated with seamless, periodic effects.
 ## Usage
 
 ```sh
-pip install -e .
-python -m cinemagraph.render  # writes output/night_study.mp4 and .webp
+uv sync
+uv run python -m cinemagraph.render  # writes output/night_study.mp4 and .webp
 ```
 
 Options: `--period` (loop length in seconds, default 6), `--fps` (default 24).
