@@ -11,6 +11,7 @@ import numpy as np
 from PIL import Image
 
 from cinemagraph.effects.city_lights import CityLights, CityLightsConfig
+from cinemagraph.effects.clouds import Clouds, CloudsConfig
 from cinemagraph.effects.steam import Steam, SteamConfig
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -19,6 +20,7 @@ SOURCE = ROOT / "assets/source/night_study.png"
 
 def build_effects(base: np.ndarray, period: float) -> list:
     return [
+        Clouds(CloudsConfig(), base, period),
         CityLights(CityLightsConfig(), base, period),
         Steam(SteamConfig(source_x=890, source_y=792), period),
     ]
