@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 
-from cinemagraph.noise import fractal_noise
+from cinemagraph.noise import fractal_noise, roll_smooth
 
 
 @dataclass
@@ -79,9 +79,9 @@ class Steam:
         phase = 2 * np.pi * t / self.period
 
         # Scroll the noise upward by exactly one tile per loop.
-        shift = int(round(h * t / self.period)) % h
-        breakup = np.roll(self.breakup, -shift, axis=0)
-        drift = np.roll(self.drift, -shift, axis=0)
+        shift = (h * t / self.period) % h
+        breakup = roll_smooth(self.breakup, -shift, axis=0)
+        drift = roll_smooth(self.drift, -shift, axis=0)
 
         width = cfg.base_width + (cfg.top_width - cfg.base_width) * u
         sway = 3 + 26 * u**1.3  # wider swing higher up
@@ -104,7 +104,7 @@ class Steam:
 
         # Densest just above the rim, thinning out as it rises.
         body = 1.3 - 0.8 * np.clip(u / 0.6, 0, 1)
-        a = density * (0.15 + breakup**2.2) * formed * body
+        a = density * (0.15 + np.clip(breakup, 0, 1) ** 2.2) * formed * body
         a = np.clip(a * cfg.strength, 0, 1)
         return cv2.GaussianBlur(a.astype(np.float32), (0, 0), 2.0)
 

@@ -40,7 +40,9 @@ def render(out: Path, period: float, fps: int, preview: Path | None) -> None:
         # Near-lossless constant QP: at normal quality the first (I) frame
         # carries different grain from the last (P) frame, which shows as a
         # flicker at the loop seam. Static pixels keep the file small anyway.
-        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-qp", "4",
+        # No B-frames either: they get a coarser quantizer than P-frames, so
+        # the grain pulses every few frames and motion looks uneven.
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-qp", "4", "-bf", "0",
         "-movflags", "+faststart",
         str(out),
     ]  # fmt: skip
@@ -59,7 +61,11 @@ def render(out: Path, period: float, fps: int, preview: Path | None) -> None:
         subprocess.run(
             [
                 "ffmpeg", "-y", "-loglevel", "error", "-i", str(out),
-                "-vf", "scale=724:-2", "-loop", "0", "-quality", "80",
+                "-vf", "scale=724:-2", "-loop", "0",
+                # Below ~95 the animated WebP encoder treats the faint sky
+                # changes as "unchanged" and skips them, so the clouds stall
+                # for several frames and then jump.
+                "-quality", "95",
                 str(preview),
             ],  # fmt: skip
             check=True,
@@ -71,7 +77,9 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=ROOT / "output/night_study.mp4")
     parser.add_argument("--preview", type=Path, default=ROOT / "output/night_study.webp")
     parser.add_argument("--period", type=float, default=6.0, help="loop length in seconds")
-    parser.add_argument("--fps", type=int, default=24)
+    # 30 fps divides evenly into 60 Hz displays (2 refreshes per frame); 24 fps
+    # alternates 2 and 3 refreshes, which shows as judder in GIF/WebP viewers.
+    parser.add_argument("--fps", type=int, default=30)
     args = parser.parse_args()
     render(args.out, args.period, args.fps, args.preview)
 

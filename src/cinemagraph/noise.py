@@ -39,3 +39,18 @@ def fractal_noise(
         amp *= 0.5
     total -= total.min()
     return total / total.max()
+
+
+
+def roll_smooth(a: np.ndarray, shift: float, axis: int) -> np.ndarray:
+    """np.roll with a fractional shift, for arrays that wrap along `axis`.
+
+    Rounding the shift to whole pixels makes slow scrolls advance in uneven
+    0/1/2 pixel steps, which reads as stutter. Blending neighbouring pixels
+    instead softens the image every half pixel, which pulses. Shifting the
+    phase in the frequency domain is exact for periodic noise.
+    """
+    n = a.shape[axis]
+    freqs = np.fft.fftfreq(n).reshape([-1 if i == axis else 1 for i in range(a.ndim)])
+    spectrum = np.fft.fft(a, axis=axis) * np.exp(-2j * np.pi * freqs * shift)
+    return np.real(np.fft.ifft(spectrum, axis=axis)).astype(a.dtype)

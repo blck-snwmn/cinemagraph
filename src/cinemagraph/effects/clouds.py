@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 import cv2
 import numpy as np
 
-from cinemagraph.noise import periodic_noise
+from cinemagraph.noise import periodic_noise, roll_smooth
 
 
 @dataclass
@@ -89,8 +89,8 @@ class Clouds:
             borderMode=cv2.BORDER_REFLECT,
         )
         tile = self.cfg.shade_tile
-        offset = int(round(tile * t / self.period))
-        cols = (np.arange(moved.shape[1]) - offset) % tile
-        moved = moved * (1 + self.cfg.shade_depth * self.shade[:, cols, None])
+        shade = roll_smooth(self.shade, (tile * t / self.period) % tile, axis=1)
+        cols = np.arange(moved.shape[1]) % tile
+        moved = moved * (1 + self.cfg.shade_depth * shade[:, cols, None])
         region = frame[self.y0 : self.y1, self.x0 : self.x1]
         region[:] = region + self.weight * (moved + self.detail - region)
