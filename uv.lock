@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -19,9 +19,10 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "numpy", specifier = ">=2.0" },
-    { name = "opencv-python-headless", specifier = ">=4.10" },
-    { name = "pillow", specifier = ">=10.0" },
+    { name = "numpy", marker = "python_full_version < '3.12'", specifier = "==2.4.6" },
+    { name = "numpy", marker = "python_full_version >= '3.12'", specifier = "==2.5.3" },
+    { name = "opencv-python-headless", specifier = "==5.0.0.93" },
+    { name = "pillow", specifier = "==12.3.0" },
 ]
 
 [[package]]
