@@ -14,5 +14,8 @@ dependencies = [
 requires = ["hatchling==1.32.4"]
 build-backend = "hatchling.build"
 
+[tool.uv]
+exclude-newer = "7 days"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/cinemagraph"]
